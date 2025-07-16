@@ -1,391 +1,393 @@
-//import SwiftUI
-//
-//// MARK: - Checklist Item
-//struct ChecklistItem: Identifiable, Codable, Equatable {
-//    var id = UUID()
-//    var title: String
-//    var isCompleted: Bool = false
-//}
-//
-//// MARK: - ViewModel
-//class ContentViewModel: ObservableObject {
-//    @Published var items: [ChecklistItem] = [] {
-//        didSet { saveItems() }
-//    }
-//    
-//    let storageKey = "ChecklistItems"
-//    
-//    init() {
-//        loadItems()
-//    }
-//    
-//    func addItem(title: String) {
-//        items.append(ChecklistItem(title: title))
-//    }
-//    
-//    func toggle(item: ChecklistItem) {
-//        if let index = items.firstIndex(where: { $0.id == item.id }) {
-//            items[index].isCompleted.toggle()
-//        }
-//    }
-//    
-//    func update(item: ChecklistItem, title: String) {
-//        if let index = items.firstIndex(where: { $0.id == item.id }) {
-//            items[index].title = title
-//        }
-//    }
-//    
-//    func delete(item: ChecklistItem) {
-//        items.removeAll { $0 == item }
-//    }
-//    
-//    func saveItems() {
-//        if let encoded = try? JSONEncoder().encode(items) {
-//            UserDefaults.standard.set(encoded, forKey: storageKey)
-//        }
-//    }
-//    
-//    func loadItems() {
-//        if let data = UserDefaults.standard.data(forKey: storageKey),
-//           let decoded = try? JSONDecoder().decode([ChecklistItem].self, from: data) {
-//            items = decoded
-//        }
-//    }
-//}
-//
-//// Toast
-//extension View {
-//    func toast(isShowing: Binding<Bool>, message: String) -> some View {
-//        ZStack {
-//            self
-//            if isShowing.wrappedValue {
-//                Text(message)
-//                    .padding()
-//                    .background(Color.black.opacity(0.8))
-//                    .foregroundColor(.white)
-//                    .cornerRadius(10)
-//                    .transition(.opacity)//fades in and out pop up
-//                    .zIndex(1) //always on top of everything else
-//                    .frame(maxWidth: .infinity, maxHeight: .infinity) //center of screen
-//                    .background(Color.clear) // fills screen ensuring it's centered
-//            }
-//        }
-//        .animation(.easeInOut, value: isShowing.wrappedValue)
-//    }
-//}
-//
-//// MARK: - View
-//struct ContentView: View {
-//    @StateObject private var viewModel = ContentViewModel()
-//    @State private var newItem = ""
-//    @State private var itemToDelete: ChecklistItem? = nil
-//    @State private var showDeleteConfirmation = false
-//    @State private var showSuccessToast = false
-//    @State private var itemJustCompleted: ChecklistItem?
-//
-//    var body: some View {
-//        NavigationStack {
-//            VStack {
-//                
-//                //Adding a goal
-//                HStack {
-//                    TextField("New Goal", text: $newItem)
-//                        .textFieldStyle(.roundedBorder)
-//                    
-//                    Button("+") {
-//                        let trimmed = newItem.trimmingCharacters(in: .whitespaces)
-//                        guard !trimmed.isEmpty else { return }
-//                        viewModel.addItem(title: trimmed)
-//                        newItem = ""
-//                    }
-//                }
-//                .padding()
-//                
-//                List {
-//                    ForEach(viewModel.items) { item in
-//                        HStack {
-//                            Button(action: {
-//                                // Mark as completed
-//                                viewModel.toggle(item: item)
-//                                
-//                                // Goal is completed
-//                                if let updatedItem = viewModel.items.first(where: { $0.id == item.id }), updatedItem.isCompleted {
-//                                    withAnimation {
-//                                        showSuccessToast = true
-//                                        itemJustCompleted = updatedItem
-//                                    }
-//
-//                                    // Goal is copmleted "animation"
-//                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { //toast shows for 3 seconds
-//                                        withAnimation {
-//                                            showSuccessToast = false
-//                                            if let itemToRemove = itemJustCompleted {
-//                                                viewModel.delete(item: itemToRemove) //after 3 seconds, toast disappears & goal deletes
-//                                                itemJustCompleted = nil
-//                                            }
-//                                        }
-//                                    }
-//                                }
-//                            }) {
-//                                //gray -> blue check circle
-//                                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-//                                    .foregroundColor(item.isCompleted ? .blue : .gray)
-//                            }
-//
-//                            
-//                            TextField("Item", text: Binding(
-//                                get: { item.title },
-//                                set: { viewModel.update(item: item, title: $0) }
-//                            ))
-//                            
-//                            Spacer()
-//                            
-//                            Button(action: {
-//                                itemToDelete = item
-//                                showDeleteConfirmation = true
-//                            }) {
-//                                Image(systemName: "xmark.circle.fill")
-//                                    .foregroundColor(.gray)
-//                            }
-//                            .buttonStyle(BorderlessButtonStyle())
-//                        }
-//                    }
-//                }
-//            }
-//            .navigationTitle("Goals")
-//            .alert("Are you sure you want to delete this goal?\nYou can do it!", isPresented: $showDeleteConfirmation, presenting: itemToDelete) { item in
-//                Button("Cancel", role: .cancel) {}
-//                Button("Delete", role: .destructive) {
-//                    withAnimation {
-//                        viewModel.delete(item: item)
-//                    }
-//                }
-//            }
-//        }
-//        .toast(isShowing: $showSuccessToast, message: "Way to go!")
-//    }
-//}
-
 import SwiftUI
+import UIKit
 
-// MARK: - Checklist Item
-struct ChecklistItem: Identifiable, Codable, Equatable {
-    var id = UUID()
+// 1. Enums
+enum GoalCategory: String, CaseIterable, Identifiable {
+    case selfCare = "self_care"
+    case therapy, nutrition, fitness, social, mindfulness, recovery
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .selfCare: return "Self Care"
+        case .therapy: return "Therapy"
+        case .nutrition: return "Nutrition"
+        case .fitness: return "Fitness"
+        case .social: return "Social"
+        case .mindfulness: return "Mindfulness"
+        case .recovery: return "Recovery"
+        }
+    }
+    var color: Color {
+        switch self {
+        case .selfCare: return .pink
+        case .therapy: return .purple
+        case .nutrition: return .green
+        case .fitness: return .blue
+        case .social: return .yellow
+        case .mindfulness: return .indigo
+        case .recovery: return .mint
+        }
+    }
+}
+enum GoalStatus: String, CaseIterable {
+    case notStarted = "not_started"
+    case inProgress = "in_progress"
+    case completed
+    case paused
+    var icon: Image {
+        switch self {
+        case .notStarted: return Image(systemName: "checkmark.circle")
+        case .inProgress: return Image(systemName: "play.fill")
+        case .completed: return Image(systemName: "checkmark.circle.fill")
+        case .paused: return Image(systemName: "pause.fill")
+        }
+    }
+    var label: String {
+        rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+// 2. Goal Model
+struct Goal: Identifiable {
+    let id: UUID
     var title: String
     var description: String
-    var isCompleted: Bool = false
+    var category: GoalCategory
+    var targetDate: Date?
+    var status: GoalStatus
+    var progressPercentage: Int
 }
 
-// MARK: - ViewModel
-class ContentViewModel: ObservableObject {
-    @Published var items: [ChecklistItem] = [] {
-        didSet { saveItems() }
-    }
-
-    let storageKey = "ChecklistItems"
-
-    init() {
-        loadItems()
-    }
-
-    func addItem(title: String, description: String) {
-        items.append(ChecklistItem(title: title, description: description))
-    }
-
-    func toggle(item: ChecklistItem) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index].isCompleted.toggle()
+// 3. ViewModel
+class GoalViewModel: ObservableObject {
+    @Published var goals: [Goal] = []
+    @Published var filter: String = "all"
+    @Published var showForm = false
+    @Published var editingGoal: Goal? = nil
+    @Published var formData = Goal(id: UUID(), title: "", description: "", category: .selfCare, targetDate: nil, status: .notStarted, progressPercentage: 0)
+    
+    // Toast state
+    @Published var showToast = false
+    @Published var toastMessage = ""
+    
+    // Haptic feedback generator
+    private let feedbackGenerator = UINotificationFeedbackGenerator()
+    
+    var filteredGoals: [Goal] {
+        switch filter {
+        case "active":
+            return goals.filter { $0.status == .notStarted || $0.status == .inProgress }
+        case "completed":
+            return goals.filter { $0.status == .completed }
+        case let cat where GoalCategory.allCases.map({ $0.rawValue }).contains(cat):
+            return goals.filter { $0.category.rawValue == cat }
+        default:
+            return goals
         }
     }
-
-    func update(item: ChecklistItem, title: String) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index].title = title
+    
+    func addOrUpdateGoal() {
+        if let index = goals.firstIndex(where: { $0.id == formData.id }) {
+            goals[index] = formData
+        } else {
+            goals.append(formData)
+        }
+        resetForm()
+    }
+    
+    func editGoal(_ goal: Goal) {
+        editingGoal = goal
+        formData = goal
+        showForm = true
+    }
+    
+    func resetForm() {
+        formData = Goal(id: UUID(), title: "", description: "", category: .selfCare, targetDate: nil, status: .notStarted, progressPercentage: 0)
+        editingGoal = nil
+        showForm = false
+    }
+    
+    func updateStatus(_ goal: Goal, to newStatus: GoalStatus) {
+        if let i = goals.firstIndex(where: { $0.id == goal.id }) {
+            goals[i].status = newStatus
+            if newStatus == .completed {
+                goals[i].progressPercentage = 100
+                showCompletionToast()
+            } else if newStatus == .notStarted {
+                goals[i].progressPercentage = 0
+            }
         }
     }
-
-    func delete(item: ChecklistItem) {
-        items.removeAll { $0 == item }
-    }
-
-    func saveItems() {
-        if let encoded = try? JSONEncoder().encode(items) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+    
+    func updateProgress(_ goal: Goal, newProgress: Int) {
+        if let i = goals.firstIndex(where: { $0.id == goal.id }) {
+            goals[i].progressPercentage = newProgress
+            if newProgress == 100 {
+                goals[i].status = .completed
+                showCompletionToast()
+            } else if newProgress > 0 && goals[i].status == .notStarted {
+                goals[i].status = .inProgress
+            }
         }
     }
-
-    func loadItems() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode([ChecklistItem].self, from: data) {
-            items = decoded
+    
+    func deleteGoal(_ goal: Goal) {
+        goals.removeAll { $0.id == goal.id }
+        feedbackGenerator.notificationOccurred(.warning) // Haptic feedback for delete
+    }
+    
+    private func showCompletionToast() {
+        toastMessage = "Way to go!"
+        withAnimation {
+            showToast = true
+        }
+        feedbackGenerator.notificationOccurred(.success) // Haptic feedback for success
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation {
+                self.showToast = false
+            }
         }
     }
 }
 
-// MARK: - Toast Extension
+// 4. Helper for optional DatePicker extension Binding
+extension Binding {
+    init(_ source: Binding<Value?>, replacingNilWith fallbackValue: Value) {
+        self.init(
+            get: { source.wrappedValue ?? fallbackValue },
+            set: { newValue in
+                source.wrappedValue = newValue
+            }
+        )
+    }
+}
+
+// 5. Toast Modifier
 extension View {
     func toast(isShowing: Binding<Bool>, message: String) -> some View {
         ZStack {
             self
             if isShowing.wrappedValue {
                 Text(message)
+                    .font(.headline)
                     .padding()
-                    .background(Color.black.opacity(0.8))
+                    .background(Color.black.opacity(0.75))
                     .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .transition(.opacity)
+                    .cornerRadius(12)
+                    .shadow(radius: 10)
+                    .transition(.scale.combined(with: .opacity))
                     .zIndex(1)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.clear)
             }
         }
-        .animation(.easeInOut, value: isShowing.wrappedValue)
+        .animation(.easeInOut(duration: 0.3), value: isShowing.wrappedValue)
     }
 }
 
-// MARK: - ContentView
-struct ContentView: View {
-    @StateObject private var viewModel = ContentViewModel()
-    @State private var showPopup = false
-    @State private var goalTitle = ""
-    @State private var goalDescription = ""
+// 6. Main View
+struct GoalsView: View {
+    @StateObject private var viewModel = GoalViewModel()
     @State private var showDeleteConfirmation = false
-    @State private var itemToDelete: ChecklistItem? = nil
-    @State private var showSuccessToast = false
-    @State private var itemJustCompleted: ChecklistItem?
-
+    @State private var goalToDelete: Goal? = nil
+    
     var body: some View {
-        NavigationStack {
-            ZStack {
-                VStack {
-                    List {
-                        ForEach(viewModel.items) { item in
-                            VStack(alignment: .leading) {
-                                HStack {
-                                    Button(action: {
-                                        viewModel.toggle(item: item)
-                                        if let updatedItem = viewModel.items.first(where: { $0.id == item.id }),
-                                           updatedItem.isCompleted {
-                                            withAnimation {
-                                                showSuccessToast = true
-                                                itemJustCompleted = updatedItem
-                                            }
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                                withAnimation {
-                                                    showSuccessToast = false
-                                                    if let itemToRemove = itemJustCompleted {
-                                                        viewModel.delete(item: itemToRemove)
-                                                        itemJustCompleted = nil
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }) {
-                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .foregroundColor(item.isCompleted ? .blue : .gray)
-                                    }
-
-                                    Text(item.title)
-                                        .fontWeight(.bold)
-                                        .lineLimit(1)
-                                    Spacer()
-
-                                    Button(action: {
-                                        itemToDelete = item
-                                        showDeleteConfirmation = true
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.gray)
-                                    }
-                                    .buttonStyle(BorderlessButtonStyle())
-                                }
-
-                                if !item.description.isEmpty {
-                                    Text(item.description)
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            .padding(.vertical, 4)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    controls
+                    
+                    if viewModel.showForm {
+                        goalForm
+                    }
+                    
+                    if viewModel.filteredGoals.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(viewModel.filteredGoals) { goal in
+                            goalCard(goal)
                         }
                     }
-
-                    Spacer()
-
-                    Button(action: {
-                        showPopup = true
-                    }) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 24, weight: .bold))
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .clipShape(Circle())
-                            .shadow(radius: 5)
-                    }
-                    .padding(.bottom, 20)
                 }
-
-                if showPopup {
-                    Color.black.opacity(0.4)
-                        .edgesIgnoringSafeArea(.all)
-
-                    VStack(spacing: 16) {
-                        HStack {
-                            Spacer()
-                            Button(action: {
-                                showPopup = false
-                                goalTitle = ""
-                                goalDescription = ""
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.title2)
-                                    .padding()
-                            }
-                        }
-
-                        TextField("Goal Title", text: $goalTitle)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
-
-                        TextField("Description", text: $goalDescription)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
-
-                        Button(action: {
-                            let trimmed = goalTitle.trimmingCharacters(in: .whitespaces)
-                            guard !trimmed.isEmpty else { return }
-                            viewModel.addItem(title: trimmed, description: goalDescription)
-                            goalTitle = ""
-                            goalDescription = ""
-                            showPopup = false
-                        }) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 30))
-                                .foregroundColor(.green)
-                                .padding(.top, 8)
-                        }
-                    }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(20)
-                    .padding(.horizontal, 40)
-                    .transition(.move(edge: .bottom))
-                    .zIndex(2)
-                }
+                .padding()
             }
-            .navigationTitle("Goals")
-            .alert("Are you sure you want to delete this goal?\nYou can do it!", isPresented: $showDeleteConfirmation, presenting: itemToDelete) { item in
+            .navigationTitle("My Goals")
+            // Delete confirmation alert
+            .alert("Are you sure you want to delete this goal?\nYou can do it!", isPresented: $showDeleteConfirmation, presenting: goalToDelete) { goal in
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
                     withAnimation {
-                        viewModel.delete(item: item)
+                        if let goal = goalToDelete {
+                            viewModel.deleteGoal(goal)
+                        }
                     }
                 }
             }
+            .toast(isShowing: $viewModel.showToast, message: viewModel.toastMessage)
         }
-        .toast(isShowing: $showSuccessToast, message: "Way to go!")
+    }
+    
+    private var controls: some View {
+        HStack {
+            Button {
+                viewModel.showForm.toggle()
+            } label: {
+                //replace with pencil bubble button
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(12)
+                    .background(Color.blue)
+                    .clipShape(Circle())
+                    .accessibilityLabel("Add new goal")
+                    .accessibilityHint("Opens the form to create a new goal")
+            }
+            Menu {
+                Button("All Goals") { viewModel.filter = "all" }
+                Button("Active Goals") { viewModel.filter = "active" }
+                Button("Completed Goals") { viewModel.filter = "completed" }
+                ForEach(GoalCategory.allCases) { category in
+                    Button(category.displayName) { viewModel.filter = category.rawValue }
+                }
+            } label: {
+                Label("Filter", systemImage: "slider.horizontal.3")
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(12)
+                    .accessibilityLabel("Filter goals")
+                    .accessibilityHint("Choose which goals to display")
+            }
+        }
+    }
+    
+    private var goalForm: some View {
+        VStack(spacing: 12) {
+            Text(viewModel.editingGoal == nil ? "New Goal" : "Edit Goal")
+                .font(.headline)
+            TextField("Title", text: $viewModel.formData.title)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .accessibilityLabel("Goal title")
+            TextField("Description", text: $viewModel.formData.description)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .accessibilityLabel("Goal description")
+            Picker("Category", selection: $viewModel.formData.category) {
+                ForEach(GoalCategory.allCases) { category in
+                    Text(category.displayName).tag(category)
+                }
+            }
+            .accessibilityLabel("Goal category picker")
+            DatePicker(
+                "Complete by",
+                selection: Binding($viewModel.formData.targetDate, replacingNilWith: Date()),
+                displayedComponents: .date
+            )
+            .accessibilityLabel("Goal target date picker")
+            HStack {
+                Button("Let's do this!") {
+                    viewModel.addOrUpdateGoal()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Submit goal")
+                
+                Button("Cancel") {
+                    viewModel.resetForm()
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Cancel goal creation")
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.05))
+        .cornerRadius(20)
+    }
+    
+    private func goalCard(_ goal: Goal) -> some View {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(goal.title)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .accessibilityLabel("Goal title: \(goal.title)")
+                    Spacer()
+                    Button("Edit") {
+                        viewModel.editGoal(goal)
+                    }
+                    .accessibilityLabel("Edit goal titled \(goal.title)")
+                    
+                    // Trash button for delete
+                    Button {
+                        goalToDelete = goal
+                        showDeleteConfirmation = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                            .padding(6)
+                    }
+                    .accessibilityLabel("Delete goal titled \(goal.title)")
+                }
+                Text(goal.description)
+                    .font(.subheadline)
+                    .accessibilityLabel("Goal description: \(goal.description)")
+                HStack {
+                    Text(goal.category.displayName)
+                        .padding(6)
+                        .background(goal.category.color.opacity(0.2))
+                        .cornerRadius(10)
+                        .accessibilityLabel("Category: \(goal.category.displayName)")
+        
+                }
+                if let target = goal.targetDate {
+                    Label("Complete by: \(target.formatted(date: .abbreviated, time: .omitted))", systemImage: "calendar")
+                        .font(.footnote)
+                        .foregroundColor(.blue)
+                        .accessibilityLabel("Target date: \(target.formatted(date: .abbreviated, time: .omitted))")
+                }
+               
+                
+                // Checkbox for completion toggle
+                Button(action: {
+                    let isCompleted = goal.status == .completed
+                    if isCompleted {
+                        viewModel.updateStatus(goal, to: .notStarted)
+                        viewModel.updateProgress(goal, newProgress: 0)
+                    } else {
+                        viewModel.updateProgress(goal, newProgress: 100)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: goal.status == .completed ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(goal.status == .completed ? .blue : .gray)
+                    }
+                }
+                .accessibilityLabel("Mark goal \(goal.title) as complete")
+                .buttonStyle(PlainButtonStyle())
+
+            }
+            .padding()
+            .background(Color.white)
+            .cornerRadius(15)
+            .shadow(radius: 2)
+        }
+    
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            //replace with semi transparent leaf icon
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 64))
+                .foregroundColor(.green.opacity(0.25))
+                .accessibilityHidden(true)
+            Text("No goals")
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+    }
+}
+
+// Preview
+struct GoalsView_Previews: PreviewProvider {
+    static var previews: some View {
+        GoalsView()
     }
 }
