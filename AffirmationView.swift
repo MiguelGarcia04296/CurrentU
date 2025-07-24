@@ -93,7 +93,7 @@ enum AffirmationFilter: String, CaseIterable, Identifiable {
     /// Human-readable names for filter options
         var displayName: String {
             switch self {
-            case .all: return "All"
+            case .all: return "All Affirmations"
             case .favorites: return "Favorites"
             case .selfLove: return "Self Love"
             case .bodyAcceptance: return "Body Acceptance"
@@ -317,31 +317,9 @@ struct AffirmationView: View {
                 } else {
                     // Main content when data is loaded
                     ScrollView {
-                        VStack {
+                        VStack(spacing: 25) {
                             // Page title with ocean theme
-
-                            Spacer()
-                            Spacer()
-                            
-                            HStack {
-                                // Back button that dismisses this view
-                                BackwardBubble(bubbleSize: 45) {
-                                    isPresented = false
-                                }
-                                Spacer()
-                                // Page title
-                                Text("My Affirmations")
-                                    .font(.title2)
-                                    .bold()
-                                    .foregroundColor(Color("categoryPurple"))
-                                    .frame(maxWidth: .infinity, alignment: .center) // Center the title
-                                Spacer()
-                                // Invisible spacer to balance the layout
-                                Color.clear.frame(width: 45, height: 45)
-                            }
-                            .padding(.horizontal, 40)
-
-                            Spacer()
+                            lavenderOceanTitleView
                             
                             // Show current affirmation if one is selected
                             if let current = vm.currentAffirmation {
@@ -351,9 +329,6 @@ struct AffirmationView: View {
                             
                             // Floating action buttons
                             floatingActionsView
-                            
-                            Spacer()
-                            Spacer()
                             
                             // Show creation form if user wants to add new affirmation
                             if vm.showForm {
@@ -375,6 +350,21 @@ struct AffirmationView: View {
             .navigationBarHidden(true)
             .onReceive(vm.bubbleTimer) { _ in
                 vm.addBackgroundBubble()
+            }
+            .overlay(
+                // Custom floating back button - only show when not loading
+                Group {
+                    if !vm.loading {
+                        floatingBackButton
+                    }
+                },
+                alignment: .topLeading
+            )
+            .onAppear {
+                // Add new affirmation from appreciation view if provided
+                if let newAffirmation = newAffirmation {
+                    vm.addNewAffirmation(newAffirmation)
+                }
             }
         }
     }
@@ -410,8 +400,48 @@ struct AffirmationView: View {
     
     // MARK: - UI Components
     
+    /// Ocean-themed title view
     
-  
+    private var lavenderOceanTitleView: some View {
+        HStack (spacing: 10) {
+            
+            Spacer()
+            
+            Text("My Affirmations")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(.categoryPurple) // Changed from purple to white
+                .shadow(color: Color.purple.opacity(0.08), radius: 3)
+            
+            Spacer()
+        }
+        .padding(.top, 40)
+    }
+    
+    
+    
+    /// Floating back button using your bubble design
+    private var floatingBackButton: some View {
+        Button(action: {
+            isPresented = false
+        }) {
+            ZStack {
+                Image("bubble_icon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40)
+                Image(systemName: "house.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(.white)
+                    .frame(width: 20)
+            }
+
+            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        }
+        .padding(.leading, 20)
+        .padding(.top, 50)
+    }
     
     /// Current affirmation displayed in a large bubble
     private func currentAffirmationBubbleView(_ affirmation: Affirmation) -> some View {
@@ -463,7 +493,11 @@ struct AffirmationView: View {
             }
         }
         .padding()
-        .modifier(affirmationRectangleModifier())
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.7))
+                .shadow(color: Color.purple.opacity(0.08), radius: 10)
+        )
     }
     
     /// Floating action buttons using your bubble design
@@ -478,8 +512,8 @@ struct AffirmationView: View {
                 ZStack {
                     Circle()
                         .fill(Color.white.opacity(0.8))
-                        .frame(width: 50, height: 50)
-                        .shadow(color: Color.purple.opacity(0.1), radius: 5)
+                        .frame(width: 60, height: 60)
+                        .shadow(color: Color.purple.opacity(0.08), radius: 5)
                     
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .bold))
@@ -494,7 +528,16 @@ struct AffirmationView: View {
                         await vm.createSampleAffirmations()
                     }
                 } label: {
-                    Text("")
+                    Text("Add Ocean Thoughts")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(Color.purple.opacity(0.85))
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .stroke(Color.purple.opacity(0.25), lineWidth: 1)
+                        )
                 }
             }
             
@@ -504,7 +547,6 @@ struct AffirmationView: View {
                     Text(filter.displayName).tag(filter)
                 }
             }
-            fontWeight(.bold)
             .pickerStyle(MenuPickerStyle())
             .foregroundColor(Color.purple.opacity(0.85)) // Dropdown menu font to purple
             .padding(.horizontal, 15)
@@ -517,20 +559,23 @@ struct AffirmationView: View {
         }
     }
     
-    
     /// Bubble-themed form for creating new affirmations
     private var bubbleFormView: some View {
         VStack(spacing: 20) {
-            Text("New Affirmation")
+            Text("Create New Affirmation")
                 .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(Color("categoryPurple")) // Changed from purple to white
+                .foregroundColor(.white) // Changed from purple to white
             
             // Text input in bubble style
             TextField("I am ...", text: $vm.formText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .padding()
-                .modifier(affirmationRectangleModifier())
+                .background(
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color.white.opacity(0.8))
+                        .shadow(color: Color.purple.opacity(0.08), radius: 5)
+                )
                 .foregroundColor(.white)
             
             // Category selection
@@ -543,9 +588,11 @@ struct AffirmationView: View {
             .pickerStyle(MenuPickerStyle())
             .foregroundColor(Color.purple.opacity(0.85)) // Dropdown menu font to purple
             .padding()
-            .modifier(affirmationRectangleModifier())
-            
-            
+            .background(
+                RoundedRectangle(cornerRadius: 15)
+                    .fill(Color.white.opacity(0.8))
+                    .shadow(color: Color.purple.opacity(0.08), radius: 5)
+            )
             
             // Action buttons
             HStack(spacing: 15) {
@@ -582,7 +629,11 @@ struct AffirmationView: View {
             }
         }
         .padding()
-        .modifier(affirmationRectangleModifier())
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.85))
+                .shadow(color: Color.purple.opacity(0.08), radius: 10)
+        )
     }
     
     /// Grid of affirmation bubbles
@@ -623,7 +674,7 @@ struct AffirmationView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "plus")
-                    Text("Add Your First Affirmation")
+                    Text("Add Your First Ocean Thought")
                 }
                 .font(.headline)
                 .foregroundColor(Color.purple.opacity(0.85))
@@ -639,93 +690,7 @@ struct AffirmationView: View {
     }
 }
 
-// MARK: - Affirmation Bubble Card
-// Individual affirmation cards styled like floating bubbles
 
-struct AffirmationBubbleCard: View {
-    let affirmation: Affirmation
-    let toggleFavorite: () -> Void
-    let useAffirmation: () -> Void
-    
-    @State private var isPressed = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            // Header with category and favorite
-            HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: affirmation.category.iconName)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white) // Changed from purple to white
-                    
-                    Text(affirmation.category.displayName)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white) // Changed from purple to white
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(affirmation.category.color.opacity(0.7))
-                        .shadow(color: Color.purple.opacity(0.08), radius: 2)
-                )
-                
-                Spacer()
-                
-                Button(action: toggleFavorite) {
-                    Image(systemName: affirmation.isFavorite ? "star.fill" : "star")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(affirmation.isFavorite ? .yellow : Color.purple.opacity(0.4))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            
-            // Affirmation text
-            Text("\"\(affirmation.text)\"")
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundColor(.purple)
-                .lineLimit(4)
-                .multilineTextAlignment(.leading)
-            
-            // Footer with usage and action
-            HStack {
-                Text("Used \(affirmation.timesUsed) times")
-                    .font(.caption)
-                    .foregroundColor(Color.purple.opacity(0.6))
-                
-                Spacer()
-                
-                Button("Dive In", action: useAffirmation)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(Color.purple.opacity(0.85))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.8))
-                            .shadow(color: Color.purple.opacity(0.08), radius: 2)
-                    )
-            }
-        }
-        .padding()
-        .modifier(affirmationRectangleModifier())
-        .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    isPressed = false
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Preview
 #Preview {
