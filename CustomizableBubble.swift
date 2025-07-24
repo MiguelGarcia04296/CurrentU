@@ -16,6 +16,9 @@ struct CustomizableBubble: View {
     let bubbleSize: CGFloat        // Size of the bubble (easily adjustable)
     let position: CGPoint          // X,Y position of the bubble (easily adjustable)
     let action: () -> Void         // Action to perform when bubble is tapped
+    let animationsActive: Bool
+    let outlineColor: Color?       // Optional outline color for the bubble
+    let outlineLineWidth: CGFloat  // Optional outline width (default 5)
     
     // MARK: Animation State Variables
     @State private var wobbleOffset = CGSize.zero  // Tracks the wobble animation offset
@@ -40,6 +43,17 @@ struct CustomizableBubble: View {
             VStack(spacing: 8) {
                 // MARK: Stacked Images (Bubble + Content)
                 ZStack {
+                    // Optional outline (moves with bubble)
+                    if let outlineColor = outlineColor {
+                        Circle()
+                            .stroke(outlineColor, lineWidth: outlineLineWidth)
+                            .frame(width: bubbleSize + outlineLineWidth, height: bubbleSize + outlineLineWidth)
+                    }
+                    // TopBlue glow for contrast
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: bubbleSize + 40, height: bubbleSize + 40)
+                        .shadow(color: Color.white.opacity(1.0), radius: 42, x: 50, y: 50)
                     // Background bubble image (your custom bubble_icon)
                     Image("bubble_icon")
                         .resizable()
@@ -75,9 +89,33 @@ struct CustomizableBubble: View {
         .buttonStyle(PlainButtonStyle())  // Remove default button styling
         .position(position)  // Set the bubble's position on screen
         .onAppear {
-            // Start the gentle floating animation when bubble appears
-            startGentleFloatingAnimation()
+            if animationsActive {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    wobbleOffset = .zero
+                    rotation = 0.0
+                }
+                startGentleFloatingAnimation()
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    wobbleOffset = .zero
+                    rotation = 0.0
+                }
+            }
         }
+        .modifier(CompatOnChangeModifier(value: animationsActive) { newValue in
+            if newValue {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    wobbleOffset = .zero
+                    rotation = 0.0
+                }
+                startGentleFloatingAnimation()
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    wobbleOffset = .zero
+                    rotation = 0.0
+                }
+            }
+        })
     }
     
     // MARK: Animation Functions
@@ -122,6 +160,10 @@ struct CustomizableBubble: View {
         position: CGPoint(x: 200, y: 300),
         action: {
             print("Sample bubble tapped!")
-        }
+        },
+        animationsActive: true,
+        outlineColor: .orange,
+        outlineLineWidth: 5
     )
 }
+
